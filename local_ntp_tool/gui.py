@@ -56,7 +56,9 @@ class NtpToolApp:
         self.fixed_text_var = tk.StringVar(value=self._format_profile_datetime(self.state.time_profile))
         self.fixed_time_var = tk.StringVar(value=self._format_time_of_day(self.state.time_profile))
         self.current_service_time_var = tk.StringVar()
-        self.server_status_var = tk.StringVar(value="未启动")
+        self.server_status_var = tk.StringVar(value="服务未启动")
+        self.server_detail_var = tk.StringVar(value="等待启动")
+        self.server_toggle_var = tk.StringVar(value="启动服务")
         self.service_mode_var = tk.StringVar(value=self.time_engine.describe())
         self.path_mode_var = tk.StringVar(
             value="program" if self._is_program_storage_selected() else "custom"
@@ -71,6 +73,7 @@ class NtpToolApp:
         self.ip_addresses = list_ipv4_addresses()
 
         self._build_ui()
+        self._sync_server_status_ui()
         self._refresh_ui_from_profile()
         self._schedule_periodic_refresh()
 
@@ -110,8 +113,12 @@ class NtpToolApp:
         ttk.Checkbutton(network_frame, text="启动时自动运行服务", variable=self.auto_start_var).grid(
             row=0, column=4, sticky=tk.W, padx=(18, 8), pady=4
         )
-        ttk.Button(network_frame, text="启动服务", command=self.start_server).grid(row=0, column=5, padx=6, pady=4)
-        ttk.Button(network_frame, text="停止服务", command=self.stop_server).grid(row=0, column=6, padx=6, pady=4)
+        self.server_toggle_button = ttk.Button(
+            network_frame,
+            textvariable=self.server_toggle_var,
+            command=self.toggle_server,
+        )
+        self.server_toggle_button.grid(row=0, column=5, padx=6, pady=4)
 
         ttk.Label(network_frame, text="本机IPv4").grid(row=1, column=0, sticky=tk.NW, padx=(0, 8), pady=4)
         ttk.Label(
@@ -119,16 +126,29 @@ class NtpToolApp:
             text=", ".join(self.ip_addresses),
             justify=tk.LEFT,
             wraplength=850,
-        ).grid(row=1, column=1, columnspan=6, sticky=tk.W, pady=4)
+        ).grid(row=1, column=1, columnspan=5, sticky=tk.W, pady=4)
 
         status_frame = ttk.LabelFrame(parent, text="服务状态", padding=12)
         status_frame.pack(fill=tk.X, pady=(0, 10))
-        ttk.Label(status_frame, text="服务状态").grid(row=0, column=0, sticky=tk.W, padx=(0, 8), pady=4)
-        ttk.Label(status_frame, textvariable=self.server_status_var).grid(row=0, column=1, sticky=tk.W, pady=4)
-        ttk.Label(status_frame, text="当前授时模式").grid(row=1, column=0, sticky=tk.W, padx=(0, 8), pady=4)
-        ttk.Label(status_frame, textvariable=self.service_mode_var).grid(row=1, column=1, sticky=tk.W, pady=4)
-        ttk.Label(status_frame, text="当前授时时间").grid(row=2, column=0, sticky=tk.W, padx=(0, 8), pady=4)
-        ttk.Label(status_frame, textvariable=self.current_service_time_var).grid(row=2, column=1, sticky=tk.W, pady=4)
+        ttk.Label(status_frame, text="运行状态").grid(row=0, column=0, sticky=tk.NW, padx=(0, 8), pady=4)
+        self.server_state_badge = tk.Label(
+            status_frame,
+            textvariable=self.server_status_var,
+            font=("Microsoft YaHei UI", 12, "bold"),
+            padx=18,
+            pady=10,
+            relief=tk.GROOVE,
+            bd=2,
+        )
+        self.server_state_badge.grid(row=0, column=1, sticky=tk.W, pady=4)
+        ttk.Label(status_frame, text="状态说明").grid(row=1, column=0, sticky=tk.W, padx=(0, 8), pady=4)
+        ttk.Label(status_frame, textvariable=self.server_detail_var, wraplength=860).grid(
+            row=1, column=1, sticky=tk.W, pady=4
+        )
+        ttk.Label(status_frame, text="当前授时模式").grid(row=2, column=0, sticky=tk.W, padx=(0, 8), pady=4)
+        ttk.Label(status_frame, textvariable=self.service_mode_var).grid(row=2, column=1, sticky=tk.W, pady=4)
+        ttk.Label(status_frame, text="当前授时时间").grid(row=3, column=0, sticky=tk.W, padx=(0, 8), pady=4)
+        ttk.Label(status_frame, textvariable=self.current_service_time_var).grid(row=3, column=1, sticky=tk.W, pady=4)
 
         time_frame = ttk.LabelFrame(parent, text="时间策略", padding=12)
         time_frame.pack(fill=tk.BOTH, expand=True)
@@ -319,9 +339,15 @@ class NtpToolApp:
             self.service_mode_var.set(self.time_engine.describe())
             self._refresh_ui_from_profile()
             self.logs.add("server", "time_profile_applied", description=self.time_engine.describe())
-            self.server_status_var.set("时间策略已应用")
+            self.server_detail_var.set("时间策略已应用")
         except Exception as exc:  # noqa: BLE001
             messagebox.showerror("时间策略错误", str(exc))
+
+    def toggle_server(self) -> None:
+        if self.server.is_running:
+            self.stop_server()
+        else:
+            self.start_server()
 
     def start_server(self) -> None:
         try:
@@ -332,17 +358,22 @@ class NtpToolApp:
             self.state.server.host = host
             self.state.server.port = port
             self.state.server.auto_start = self.auto_start_var.get()
-            self.server_status_var.set(f"运行中: {self.server.endpoint[0]}:{self.server.endpoint[1]}")
+            self.server_detail_var.set(f"监听地址: {self.server.endpoint[0]}:{self.server.endpoint[1]}")
+            self._sync_server_status_ui()
             self.save_current_state(show_message=False)
         except Exception as exc:  # noqa: BLE001
+            self.server_detail_var.set(f"启动失败: {exc}")
+            self._sync_server_status_ui()
             messagebox.showerror("启动失败", str(exc))
 
     def stop_server(self) -> None:
         try:
             if self.server.is_running:
                 self.server.stop()
-            self.server_status_var.set("未启动")
+            self.server_detail_var.set("服务已停止")
+            self._sync_server_status_ui()
         except Exception as exc:  # noqa: BLE001
+            self.server_detail_var.set(f"停止失败: {exc}")
             messagebox.showerror("停止失败", str(exc))
 
     def run_client_query(self) -> None:
@@ -434,7 +465,7 @@ class NtpToolApp:
         if not path:
             return
         self.logs.export_csv(Path(path), self.logs.list_entries(category))
-        self.server_status_var.set(f"日志已导出: {path}")
+        self.server_detail_var.set(f"日志已导出: {path}")
 
     def choose_storage_dir(self) -> None:
         current = self.storage_dir_var.get().strip() or str(default_program_storage_dir())
@@ -540,7 +571,8 @@ class NtpToolApp:
         self.service_mode_var.set(self.time_engine.describe())
         self.refresh_logs()
         while self.pending_status_messages:
-            self.server_status_var.set(self.pending_status_messages.pop(0))
+            self.server_detail_var.set(self.pending_status_messages.pop(0))
+        self._sync_server_status_ui()
 
     def _schedule_periodic_refresh(self) -> None:
         self._refresh_ui_from_profile()
@@ -572,6 +604,16 @@ class NtpToolApp:
 
     def _queue_status_message(self, message: str) -> None:
         self.pending_status_messages.append(message)
+
+    def _sync_server_status_ui(self) -> None:
+        if self.server.is_running:
+            self.server_status_var.set("服务运行中")
+            self.server_toggle_var.set("停止服务")
+            self.server_state_badge.configure(bg="#dff6dd", fg="#136c2e")
+        else:
+            self.server_status_var.set("服务未启动")
+            self.server_toggle_var.set("启动服务")
+            self.server_state_badge.configure(bg="#fde7e9", fg="#b42318")
 
     def _update_paths(self, storage_dir: Path) -> None:
         storage_dir = Path(storage_dir)
