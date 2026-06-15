@@ -69,6 +69,26 @@ python run_ntp_tool.py --cli --query ntp.example.com:123
 
 首次打包会在当前环境安装 `PyInstaller`，产物默认输出到 `dist/LocalNtpTool/`。
 
+### GitHub Tag 自动打包
+
+仓库已包含 GitHub Actions 工作流 [build-release-on-tag.yml](</D:/HelloWorld/Ai/ntp_service/.github/workflows/build-release-on-tag.yml>)。
+
+当你创建并推送标签后，例如：
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+工作流会自动执行这些动作：
+
+- 在 `Windows / Ubuntu / macOS` 三个平台构建可执行程序
+- 将构建结果分别打包为压缩文件
+- 上传为 GitHub Actions 构建产物
+- 自动创建或更新对应 tag 的 GitHub Release，并把压缩包附加到 Release
+
+如果你只想使用某个平台的产物，直接在对应的 Release 或 Actions Artifacts 中下载即可。
+
 ### 注意事项
 
 - 使用 `123/UDP` 在部分系统上可能需要管理员权限
@@ -122,3 +142,21 @@ python run_ntp_tool.py --cli --host 0.0.0.0 --port 123
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+### GitHub Tag Build
+
+The repository includes a GitHub Actions workflow at [build-release-on-tag.yml](</D:/HelloWorld/Ai/ntp_service/.github/workflows/build-release-on-tag.yml>).
+
+Push a tag such as:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+This workflow will:
+
+- build executables on Windows, Ubuntu, and macOS
+- package each build output
+- upload the archives as workflow artifacts
+- publish the archives to the GitHub Release for that tag
