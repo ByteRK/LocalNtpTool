@@ -69,6 +69,7 @@ class NtpToolApp:
         self.client_port_var = tk.StringVar(value=str(self.state.client.port))
         self.client_timeout_var = tk.StringVar(value=str(self.state.client.timeout_seconds))
         self.client_result_var = tk.StringVar(value="等待测试")
+        self.log_auto_scroll_var = tk.BooleanVar(value=True)
 
         self.ip_addresses = list_ipv4_addresses()
 
@@ -245,8 +246,10 @@ class NtpToolApp:
         result_frame.pack(fill=tk.X, pady=(0, 10))
         ttk.Label(result_frame, textvariable=self.client_result_var, justify=tk.LEFT, wraplength=1100).pack(anchor=tk.W)
 
+        client_result_table_frame = ttk.Frame(parent)
+        client_result_table_frame.pack(fill=tk.BOTH, expand=True)
         self.client_tree = ttk.Treeview(
-            parent,
+            client_result_table_frame,
             columns=("target", "success", "server_time", "delta", "rtt", "reference"),
             show="headings",
             height=16,
@@ -262,7 +265,25 @@ class NtpToolApp:
         for key, title in headings.items():
             self.client_tree.heading(key, text=title)
             self.client_tree.column(key, width=170, anchor=tk.W)
-        self.client_tree.pack(fill=tk.BOTH, expand=True)
+        client_result_y_scrollbar = ttk.Scrollbar(
+            client_result_table_frame,
+            orient=tk.VERTICAL,
+            command=self.client_tree.yview,
+        )
+        client_result_x_scrollbar = ttk.Scrollbar(
+            client_result_table_frame,
+            orient=tk.HORIZONTAL,
+            command=self.client_tree.xview,
+        )
+        self.client_tree.configure(
+            yscrollcommand=client_result_y_scrollbar.set,
+            xscrollcommand=client_result_x_scrollbar.set,
+        )
+        self.client_tree.grid(row=0, column=0, sticky="nsew")
+        client_result_y_scrollbar.grid(row=0, column=1, sticky="ns")
+        client_result_x_scrollbar.grid(row=1, column=0, sticky="ew")
+        client_result_table_frame.columnconfigure(0, weight=1)
+        client_result_table_frame.rowconfigure(0, weight=1)
 
     def _build_log_tab(self, parent: ttk.Frame) -> None:
         button_frame = ttk.Frame(parent)
@@ -270,6 +291,11 @@ class NtpToolApp:
         ttk.Button(button_frame, text="刷新日志", command=self.refresh_logs).pack(side=tk.LEFT, padx=(0, 6))
         ttk.Button(button_frame, text="导出服务请求日志", command=self.export_service_logs).pack(side=tk.LEFT, padx=6)
         ttk.Button(button_frame, text="导出客户端测试日志", command=self.export_client_logs).pack(side=tk.LEFT, padx=6)
+        ttk.Checkbutton(
+            button_frame,
+            text="自动滚动到最新记录",
+            variable=self.log_auto_scroll_var,
+        ).pack(side=tk.RIGHT, padx=(6, 0))
 
         split = ttk.Panedwindow(parent, orient=tk.VERTICAL)
         split.pack(fill=tk.BOTH, expand=True)
@@ -279,8 +305,10 @@ class NtpToolApp:
         split.add(service_frame, weight=1)
         split.add(client_frame, weight=1)
 
+        service_tree_frame = ttk.Frame(service_frame)
+        service_tree_frame.pack(fill=tk.BOTH, expand=True)
         self.service_log_tree = ttk.Treeview(
-            service_frame,
+            service_tree_frame,
             columns=("time", "ip", "port", "returned", "mode", "success", "message"),
             show="headings",
             height=12,
@@ -297,10 +325,19 @@ class NtpToolApp:
         for key, title in service_headings.items():
             self.service_log_tree.heading(key, text=title)
             self.service_log_tree.column(key, width=150, anchor=tk.W)
-        self.service_log_tree.pack(fill=tk.BOTH, expand=True)
+        service_y_scrollbar = ttk.Scrollbar(service_tree_frame, orient=tk.VERTICAL, command=self.service_log_tree.yview)
+        service_x_scrollbar = ttk.Scrollbar(service_tree_frame, orient=tk.HORIZONTAL, command=self.service_log_tree.xview)
+        self.service_log_tree.configure(yscrollcommand=service_y_scrollbar.set, xscrollcommand=service_x_scrollbar.set)
+        self.service_log_tree.grid(row=0, column=0, sticky="nsew")
+        service_y_scrollbar.grid(row=0, column=1, sticky="ns")
+        service_x_scrollbar.grid(row=1, column=0, sticky="ew")
+        service_tree_frame.columnconfigure(0, weight=1)
+        service_tree_frame.rowconfigure(0, weight=1)
 
+        client_tree_frame = ttk.Frame(client_frame)
+        client_tree_frame.pack(fill=tk.BOTH, expand=True)
         self.client_log_tree = ttk.Treeview(
-            client_frame,
+            client_tree_frame,
             columns=("time", "target", "server_time", "delta", "rtt", "success", "message"),
             show="headings",
             height=12,
@@ -317,7 +354,14 @@ class NtpToolApp:
         for key, title in client_headings.items():
             self.client_log_tree.heading(key, text=title)
             self.client_log_tree.column(key, width=150, anchor=tk.W)
-        self.client_log_tree.pack(fill=tk.BOTH, expand=True)
+        client_y_scrollbar = ttk.Scrollbar(client_tree_frame, orient=tk.VERTICAL, command=self.client_log_tree.yview)
+        client_x_scrollbar = ttk.Scrollbar(client_tree_frame, orient=tk.HORIZONTAL, command=self.client_log_tree.xview)
+        self.client_log_tree.configure(yscrollcommand=client_y_scrollbar.set, xscrollcommand=client_x_scrollbar.set)
+        self.client_log_tree.grid(row=0, column=0, sticky="nsew")
+        client_y_scrollbar.grid(row=0, column=1, sticky="ns")
+        client_x_scrollbar.grid(row=1, column=0, sticky="ew")
+        client_tree_frame.columnconfigure(0, weight=1)
+        client_tree_frame.rowconfigure(0, weight=1)
 
     def apply_picker_to_text(self) -> None:
         date_value = self.date_picker.get_date()
@@ -414,14 +458,16 @@ class NtpToolApp:
         self.run_client_query()
 
     def refresh_logs(self) -> None:
+        service_yview = self.service_log_tree.yview()
+        client_yview = self.client_log_tree.yview()
         self._clear_tree(self.service_log_tree)
         self._clear_tree(self.client_log_tree)
         service_entries = self.logs.list_entries("service_request")
         client_entries = self.logs.list_entries("client_test")
-        for entry in reversed(service_entries):
+        for entry in service_entries:
             self.service_log_tree.insert(
                 "",
-                0,
+                tk.END,
                 values=(
                     self._format_datetime_for_display(entry.timestamp),
                     entry.details.get("client_ip", ""),
@@ -432,10 +478,10 @@ class NtpToolApp:
                     entry.message,
                 ),
             )
-        for entry in reversed(client_entries):
+        for entry in client_entries:
             self.client_log_tree.insert(
                 "",
-                0,
+                tk.END,
                 values=(
                     self._format_datetime_for_display(entry.timestamp),
                     entry.details.get("target", ""),
@@ -446,6 +492,7 @@ class NtpToolApp:
                     entry.message,
                 ),
             )
+        self._restore_log_view_positions(service_yview, client_yview)
 
     def export_service_logs(self) -> None:
         self._export_logs("service_request", SERVER_LOG_FILE_NAME)
@@ -614,6 +661,28 @@ class NtpToolApp:
             self.server_status_var.set("服务未启动")
             self.server_toggle_var.set("启动服务")
             self.server_state_badge.configure(bg="#fde7e9", fg="#b42318")
+
+    def _restore_log_view_positions(
+        self,
+        service_yview: tuple[float, float],
+        client_yview: tuple[float, float],
+    ) -> None:
+        if self.log_auto_scroll_var.get():
+            self._scroll_tree_to_latest(self.service_log_tree)
+            self._scroll_tree_to_latest(self.client_log_tree)
+            return
+        self._restore_tree_yview(self.service_log_tree, service_yview)
+        self._restore_tree_yview(self.client_log_tree, client_yview)
+
+    @staticmethod
+    def _scroll_tree_to_latest(tree: ttk.Treeview) -> None:
+        if tree.get_children():
+            tree.yview_moveto(1.0)
+
+    @staticmethod
+    def _restore_tree_yview(tree: ttk.Treeview, yview: tuple[float, float]) -> None:
+        if tree.get_children():
+            tree.yview_moveto(yview[0] if yview else 0.0)
 
     def _update_paths(self, storage_dir: Path) -> None:
         storage_dir = Path(storage_dir)
