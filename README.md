@@ -28,37 +28,69 @@
 pip install -r requirements.txt
 ```
 
-### 启动图形界面
+更推荐先创建项目虚拟环境，再安装依赖：
 
 ```bash
-python run_ntp_tool.py
+python -m venv .venv
+```
+
+Windows:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+macOS / Linux:
+
+```bash
+./.venv/bin/python -m pip install -r requirements.txt
+```
+
+### 启动图形界面
+
+Windows:
+
+```powershell
+./start.ps1
+```
+
+或：
+
+```bat
+start.bat
+```
+
+macOS / Linux:
+
+```bash
+./start.sh
 ```
 
 ### 启动命令行模式
 
-```bash
-python run_ntp_tool.py --cli --host 0.0.0.0 --port 123
+```powershell
+./start.ps1 --cli --host 0.0.0.0 --port 123
 ```
 
 ### CLI 示例
 
 固定时间并连续走时：
 
-```bash
-python run_ntp_tool.py --cli --mode fixed --progress-mode running --target-datetime 2026-06-15T12:00:00+00:00 --rate 1.0
+```powershell
+./start.ps1 --cli --mode fixed --progress-mode running --target-datetime 2026-06-15T12:00:00+00:00 --rate 1.0
 ```
 
 固定时间并冻结：
 
-```bash
-python run_ntp_tool.py --cli --mode fixed --progress-mode frozen --target-datetime 2026-06-15T23:59:50+00:00
+```powershell
+./start.ps1 --cli --mode fixed --progress-mode frozen --target-datetime 2026-06-15T23:59:50+00:00
 ```
 
 查询某个 NTP 服务：
 
-```bash
-python run_ntp_tool.py --cli --query 192.168.1.10:123
-python run_ntp_tool.py --cli --query ntp.example.com:123
+```powershell
+./start.ps1 --cli --query 192.168.1.10:123
+./start.ps1 --cli --query ntp.example.com:123
 ```
 
 ### 打包 Windows 可执行程序
@@ -68,6 +100,7 @@ python run_ntp_tool.py --cli --query ntp.example.com:123
 ```
 
 首次打包会在当前环境安装 `PyInstaller`，产物默认输出到 `dist/LocalNtpTool/`。
+如果项目根目录存在 `.venv`，打包脚本会优先使用该虚拟环境；只有在 `.venv` 不存在时才会回退到系统 Python。
 
 ### GitHub Tag 自动打包
 
@@ -98,8 +131,16 @@ git push origin v0.1.0
 
 ### 自动化测试
 
+Windows:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+macOS / Linux:
+
 ```bash
-python -m unittest discover -s tests -v
+./.venv/bin/python -m unittest discover -s tests -v
 ```
 
 ## English Notes
@@ -125,23 +166,51 @@ This project is a Python-based local NTP test tool for LAN devices. It provides 
 pip install -r requirements.txt
 ```
 
-### Run GUI
+Recommended setup:
 
 ```bash
-python run_ntp_tool.py
+python -m venv .venv
+```
+
+Windows:
+
+```powershell
+./.venv/Scripts/python.exe -m pip install -r requirements.txt
+```
+
+macOS / Linux:
+
+```bash
+./.venv/bin/python -m pip install -r requirements.txt
+```
+
+### Run GUI
+
+Windows:
+
+```powershell
+./start.ps1
+```
+
+macOS / Linux:
+
+```bash
+./start.sh
 ```
 
 ### Run CLI
 
-```bash
-python run_ntp_tool.py --cli --host 0.0.0.0 --port 123
+```powershell
+./start.ps1 --cli --host 0.0.0.0 --port 123
 ```
 
 ### Tests
 
-```bash
-python -m unittest discover -s tests -v
+```powershell
+./.venv/Scripts/python.exe -m unittest discover -s tests -v
 ```
+
+The launcher scripts and build scripts automatically prefer the project `.venv` when it exists, and only fall back to a system Python interpreter if no project virtual environment is present.
 
 ### GitHub Tag Build
 

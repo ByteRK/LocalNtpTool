@@ -18,11 +18,4 @@ else
   exit 1
 fi
 
-"$PYTHON_BIN" -m pip install --upgrade pip
-"$PYTHON_BIN" -m pip install -r requirements.txt
-"$PYTHON_BIN" -m PyInstaller \
-  --noconfirm \
-  --clean \
-  --name LocalNtpTool \
-  --windowed \
-  run_ntp_tool.py
+exec "$PYTHON_BIN" "$ROOT_DIR/run_ntp_tool.py" "$@"

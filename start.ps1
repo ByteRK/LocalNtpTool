@@ -20,12 +20,4 @@ function Get-ProjectPython {
 }
 
 $pythonExe = Get-ProjectPython
-
-& $pythonExe -m pip install --upgrade pip
-& $pythonExe -m pip install -r requirements.txt
-& $pythonExe -m PyInstaller `
-  --noconfirm `
-  --clean `
-  --name LocalNtpTool `
-  --windowed `
-  run_ntp_tool.py
+& $pythonExe "run_ntp_tool.py" @args
